@@ -21,8 +21,11 @@ void test_checkerboard();
 void test_gradient();
 void test_pixel_by_pixel_fill();
 
+
+void swap_buffers();
+
+
 void draw_text(const char *str, int x, int y, int r, int g, int b);
-void clear_panel();
 void scroll_text(const char *str, int y, int r, int g, int b);
 
 

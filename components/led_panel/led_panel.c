@@ -24,21 +24,12 @@ void draw_text(const char *str, int x, int y, int r, int g, int b) {
     }
 }
 
-void clear_panel() {
-    for (int y = 0; y < PANEL_HEIGHT; y++) {
-        for (int x = 0; x < PANEL_WIDTH; x++) {
-            set_pixel(x, y, 0, 0, 0);
-        }
-    }
-}
-
-
 void scroll_text(const char *str, int y, int r, int g, int b) {
     int len = strlen(str) * 6;
-    for (int offset = PANEL_WIDTH; offset > -len; offset--) {
-        clear_panel();
-		//clear_framebuffer();
+    for (int offset = PANEL_WIDTH; offset > -len-1; offset--) {        
+		clear_framebuffer();
         draw_text(str, offset, y, r, g, b);
+		swap_buffers();  // Display what was drawn
         vTaskDelay(pdMS_TO_TICKS(50));
     }
 }
@@ -61,9 +52,16 @@ void scroll_text(const char *str, int y, int r, int g, int b) {
 #define PANEL_WIDTH   64
 #define PANEL_HEIGHT  32
 
-static const char *TAG = "LED_PANEL";
 
-static uint8_t framebuffer[PANEL_HEIGHT][PANEL_WIDTH][3];  // RGB
+#define COLOR_DEPTH 3
+
+static uint8_t framebuffer_a[COLOR_DEPTH][PANEL_HEIGHT][PANEL_WIDTH][3];
+static uint8_t framebuffer_b[COLOR_DEPTH][PANEL_HEIGHT][PANEL_WIDTH][3];
+
+static volatile uint8_t (*draw_fb)[COLOR_DEPTH][PANEL_HEIGHT][PANEL_WIDTH][3] = &framebuffer_a;
+static volatile uint8_t (*disp_fb)[COLOR_DEPTH][PANEL_HEIGHT][PANEL_WIDTH][3] = &framebuffer_b;
+
+
 
 void init_pins(void)
 {
@@ -88,63 +86,82 @@ void init_pins(void)
 
 void set_pixel(int x, int y, int r, int g, int b)
 {
-    if (x >= 0 && x < PANEL_WIDTH && y >= 0 && y < PANEL_HEIGHT) {
-        framebuffer[y][x][0] = r;
-        framebuffer[y][x][1] = g;
-        framebuffer[y][x][2] = b;
+    if (x < 0 || x >= PANEL_WIDTH || y < 0 || y >= PANEL_HEIGHT) return;
+
+    for (int bit = 0; bit < COLOR_DEPTH; bit++) {
+        (*draw_fb)[bit][y][x][0] = (r >> bit) & 1;
+        (*draw_fb)[bit][y][x][1] = (g >> bit) & 1;
+        (*draw_fb)[bit][y][x][2] = (b >> bit) & 1;
     }
 }
+
+void swap_buffers()
+{
+    volatile uint8_t (*temp)[COLOR_DEPTH][PANEL_HEIGHT][PANEL_WIDTH][3] = draw_fb;
+    draw_fb = disp_fb;
+    disp_fb = temp;
+}
+
 
 void clear_framebuffer()
 {
-    memset(framebuffer, 0, sizeof(framebuffer));
+    memset((void*)draw_fb, 0, sizeof(framebuffer_a));
 }
+
+
 
 void refresh_display_task(void *arg)
 {
-    while (true) {
-        for (int row = 0; row < 8; row++) {
-            gpio_set_level(PIN_A, row & 0x01);
-            gpio_set_level(PIN_B, (row >> 1) & 0x01);
-            gpio_set_level(PIN_C, (row >> 2) & 0x01);
+    //const int base_time_us = 200;  // adjust for overall brightness
+	while (true) {
+        for (int bit = 0; bit < COLOR_DEPTH; bit++) {			
+            for (int row = 0; row < 8; row++) {
+                gpio_set_level(PIN_A, row & 0x01);
+                gpio_set_level(PIN_B, (row >> 1) & 0x01);
+                gpio_set_level(PIN_C, (row >> 2) & 0x01);
 
-            gpio_set_level(PIN_OE, 1);
+                gpio_set_level(PIN_OE, 1);
 
-            for (int col = 0; col < 128; col++) {
-                int x = col % 64;
-                int group = col >= 64 ? 0 : 1;
+                for (int col = 0; col < 128; col++) {
+                    int x = col % 64;
+                    int group = col >= 64 ? 0 : 1;
 
-                int y0 = row + (group * 8);
-                int y1 = row + ((group + 2) * 8);
+                    int y0 = row + (group * 8);
+                    int y1 = row + ((group + 2) * 8);
 
-                int r1 = framebuffer[y0][x][0];
-                int g1 = framebuffer[y0][x][1];
-                int b1 = framebuffer[y0][x][2];
+                    int r1 = (*disp_fb)[bit][y0][x][0];
+                    int g1 = (*disp_fb)[bit][y0][x][1];
+                    int b1 = (*disp_fb)[bit][y0][x][2];
 
-                int r2 = framebuffer[y1][x][0];
-                int g2 = framebuffer[y1][x][1];
-                int b2 = framebuffer[y1][x][2];
+                    int r2 = (*disp_fb)[bit][y1][x][0];
+                    int g2 = (*disp_fb)[bit][y1][x][1];
+                    int b2 = (*disp_fb)[bit][y1][x][2];
 
-                gpio_set_level(PIN_R1, r1);
-                gpio_set_level(PIN_G1, g1);
-                gpio_set_level(PIN_B1, b1);
+                    gpio_set_level(PIN_R1, r1);
+                    gpio_set_level(PIN_G1, g1);
+                    gpio_set_level(PIN_B1, b1);
 
-                gpio_set_level(PIN_R2, r2);
-                gpio_set_level(PIN_G2, g2);
-                gpio_set_level(PIN_B2, b2);
+                    gpio_set_level(PIN_R2, r2);
+                    gpio_set_level(PIN_G2, g2);
+                    gpio_set_level(PIN_B2, b2);
 
-                gpio_set_level(PIN_CLK, 1);
-                gpio_set_level(PIN_CLK, 0);
+                    gpio_set_level(PIN_CLK, 1);
+                    gpio_set_level(PIN_CLK, 0);
+                }
+
+                gpio_set_level(PIN_LAT, 1);
+                gpio_set_level(PIN_LAT, 0);
+
+                gpio_set_level(PIN_OE, 0);
+
+
+				//esp_rom_delay_us(base_time_us << bit);
+				esp_rom_delay_us(375);
             }
-
-            gpio_set_level(PIN_LAT, 1);
-            gpio_set_level(PIN_LAT, 0);
-
-            gpio_set_level(PIN_OE, 0);
-            esp_rom_delay_us(100);  // Adjust brightness
         }
     }
 }
+
 
 void test_solid_color(int r, int g, int b)
 {
@@ -155,28 +172,59 @@ void test_solid_color(int r, int g, int b)
 
 void test_checkerboard()
 {
-    for (int y = 0; y < PANEL_HEIGHT; y++)
-        for (int x = 0; x < PANEL_WIDTH; x++) {
-            int val = ((x / 8 + y / 8) % 2);
-            set_pixel(x, y, val, val, val);
-        }
-}
-
-void test_gradient()
-{
-    for (int y = 0; y < PANEL_HEIGHT; y++)
-        for (int x = 0; x < PANEL_WIDTH; x++) {
-            set_pixel(x, y, x % 2, y % 2, (x + y) % 2);
-        }
-}
-
-void test_pixel_by_pixel_fill()
-{
-    clear_framebuffer();
     for (int y = 0; y < PANEL_HEIGHT; y++) {
         for (int x = 0; x < PANEL_WIDTH; x++) {
-            set_pixel(x, y, 1, 1, 1);  // White
-            vTaskDelay(pdMS_TO_TICKS(10));
+            int val = ((x / 8 + y / 8) % 2) ? 7 : 0;  // Use 7 (max) or 0 (min) for 3-bit
+            set_pixel(x, y, val, val, val);
         }
     }
 }
+
+
+void test_gradient()
+{
+    for (int y = 0; y < PANEL_HEIGHT; y++) {
+        for (int x = 0; x < PANEL_WIDTH; x++) {
+            int r, g = 0, b;
+
+            int half = PANEL_WIDTH / 2;
+            if (x < half) {
+                // Blue → Magenta (increase red)
+                r = (x * 8) / half;   // 0 to 7
+                b = 7;
+            } else {
+                // Magenta → Red (decrease blue)
+                r = 7;
+                b = 7 - ((x - half) * 8 / half); // 7 to 0
+            }
+
+            set_pixel(x, y, r, g, b);
+        }
+    }
+}
+
+
+
+void test_pixel_by_pixel_fill()
+{
+    clear_framebuffer();     // Clear draw framebuffer
+    swap_buffers();          // Show black screen
+    clear_framebuffer();     // Clear the new draw_fb too
+    vTaskDelay(pdMS_TO_TICKS(500));
+
+    for (int y = 0; y < PANEL_HEIGHT; y++) {
+        for (int x = 0; x < PANEL_WIDTH; x++) {
+            set_pixel(x, y, 7, 7, 7);  // Add this pixel to the framebuffer
+
+            // Show this pixel plus all previous ones
+            swap_buffers();           // Show accumulated pixels
+            vTaskDelay(pdMS_TO_TICKS(10));
+
+            // Copy framebuffer state back to draw_fb (since swap flips them)
+            memcpy((void*)draw_fb, (void*)disp_fb, sizeof(framebuffer_a));
+        }
+    }
+
+    vTaskDelay(pdMS_TO_TICKS(1000));
+}
+

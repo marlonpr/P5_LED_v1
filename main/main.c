@@ -28,19 +28,68 @@ void app_main(void)
     init_pins();
     xTaskCreate(refresh_display_task, "refresh_display_task", 4096, NULL, 1, NULL);
 
-    vTaskDelay(pdMS_TO_TICKS(1000));
+    vTaskDelay(pdMS_TO_TICKS(3000));
 
     while (1) {
-	/*
-	    test_solid_color(1, 0, 0);  // Red
-        vTaskDelay(pdMS_TO_TICKS(1000));
 
-        test_solid_color(0, 1, 0);  // Green
-        vTaskDelay(pdMS_TO_TICKS(1000));
 
-        test_solid_color(0, 0, 1);  // Blue
-        vTaskDelay(pdMS_TO_TICKS(1000));
 
+		clear_framebuffer();
+		test_solid_color(0,7,7);
+		swap_buffers();  // Display what was drawn
+		vTaskDelay(pdMS_TO_TICKS(3000));
+
+ 
+        clear_framebuffer();
+		test_checkerboard();
+		swap_buffers();  // Display what was drawn
+        vTaskDelay(pdMS_TO_TICKS(3000));
+
+        clear_framebuffer();
+		test_gradient();
+		swap_buffers();  // Display what was drawn
+        vTaskDelay(pdMS_TO_TICKS(3000));
+
+        clear_framebuffer();
+		test_pixel_by_pixel_fill();  // Final test
+		//swap_buffers();  // Display what was drawn
+        vTaskDelay(pdMS_TO_TICKS(3000));
+
+		
+		clear_framebuffer();
+		draw_text("HELLO", 4, 2, 7, 7, 7);
+		swap_buffers();  // Display what was drawn
+		vTaskDelay(pdMS_TO_TICKS(1000));
+
+		clear_framebuffer();
+		scroll_text("ESP32 LED DEMO", 10, 7, 0, 0);
+		swap_buffers();  // Display what was drawn
+    	vTaskDelay(pdMS_TO_TICKS(500));
+
+		clear_framebuffer();
+		draw_bitmap(28, 12, smiley, 0, 7, 0);
+		swap_buffers();  // Display what was drawn
+		vTaskDelay(pdMS_TO_TICKS(1000));
+
+
+
+    }
+}
+
+/*
+Max 3-bit: R,G,B values 0–7
+
+Yellow: R=7, G=7, B=0
+
+Cyan: R=0, G=7, B=7
+
+Magenta: R=7, G=0, B=7
+
+		clear_framebuffer();
+	    test_solid_color(7, 0, 0);  // 
+		swap_buffers();  // Display what was drawn
+		vTaskDelay(pdMS_TO_TICKS(1000));
+ 
         test_checkerboard();
         vTaskDelay(pdMS_TO_TICKS(1000));
 
@@ -49,18 +98,92 @@ void app_main(void)
 
         test_pixel_by_pixel_fill();  // Final test
         vTaskDelay(pdMS_TO_TICKS(2000));
-	*/
 
-		//clear_framebuffer();
+		
 		draw_text("HELLO", 4, 2, 1, 1, 1);
 		vTaskDelay(pdMS_TO_TICKS(1000));
 
-		scroll_text("ESP32 LED DEMO", 10, 1, 0, 0);
+		scroll_text("ESP32 LED DEMO", 10, 7, 0, 0);
     	vTaskDelay(pdMS_TO_TICKS(500));
 
-   		clear_panel();
-		draw_bitmap(28, 12, smiley, 0, 1, 0);
+		draw_bitmap(28, 12, smile, 0, 7, 0);
 		vTaskDelay(pdMS_TO_TICKS(1000));
 
-    }
-}
+
+
+
+
+
+
+
+
+Gray (various shades):
+
+Dark Gray: R=1, G=1, B=1
+
+Mid-tone Gray: R=3, G=3, B=3
+
+Light Gray: R=6, G=6, B=6
+
+Brown: R=4, G=2, B=0
+
+Purple: R=4, G=0, B=4
+
+Olive: R=4, G=4, B=0
+
+Navy Blue: R=0, G=0, B=4
+
+Teal: R=0, G=4, B=4
+
+Pink: R=7, G=4, B=4
+
+
+
+
+
+
+
+		clear_framebuffer();
+		test_solid_color(0,7,7);
+		swap_buffers();  // Display what was drawn
+		vTaskDelay(pdMS_TO_TICKS(1000));
+
+ 
+        clear_framebuffer();
+		test_checkerboard();
+		swap_buffers();  // Display what was drawn
+        vTaskDelay(pdMS_TO_TICKS(1000));
+
+        clear_framebuffer();
+		test_gradient();
+		swap_buffers();  // Display what was drawn
+        vTaskDelay(pdMS_TO_TICKS(1000));
+
+        clear_framebuffer();
+		test_pixel_by_pixel_fill();  // Final test
+		swap_buffers();  // Display what was drawn
+        vTaskDelay(pdMS_TO_TICKS(2000));
+
+		
+		clear_framebuffer();
+		draw_text("HELLO", 4, 2, 7, 7, 7);
+		swap_buffers();  // Display what was drawn
+		vTaskDelay(pdMS_TO_TICKS(1000));
+
+		clear_framebuffer();
+		scroll_text("ESP32 LED DEMO", 10, 7, 0, 0);
+		swap_buffers();  // Display what was drawn
+    	vTaskDelay(pdMS_TO_TICKS(500));
+
+		clear_framebuffer();
+		draw_bitmap(28, 12, smiley, 0, 7, 0);
+		swap_buffers();  // Display what was drawn
+		vTaskDelay(pdMS_TO_TICKS(1000));
+
+
+
+
+
+
+
+	*/
