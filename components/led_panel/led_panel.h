@@ -6,6 +6,7 @@
 #include "driver/gpio.h"
 #include "esp_log.h"
 #include <string.h>
+#include "inttypes.h"
 // Panel dimensions
 #define PANEL_WIDTH   64
 #define PANEL_HEIGHT  32
@@ -27,6 +28,19 @@ void swap_buffers();
 
 void draw_text(const char *str, int x, int y, int r, int g, int b);
 void scroll_text(const char *str, int y, int r, int g, int b);
+
+
+void init_oe_pwm(void);
+
+void init_gamma_table();
+
+void set_global_brightness(uint8_t percent);
+
+void draw_bitmap(int x0, int y0, const uint8_t bmp[], int r, int g, int b);
+
+
+extern uint8_t smiley[];
+
 
 
 #endif // LED_PANEL_H
